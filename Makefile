@@ -1,27 +1,15 @@
+## Makefile - cross-platform helpers for local and EC2
 .PHONY: up down detect-env
 
 # Set working directory to the Makefile's location
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-# Detect environment and set appropriate IP
+# Discover a Python executable (works on Windows and Ubuntu)
+PYTHON := $(shell command -v python3 2>/dev/null || command -v python 2>/dev/null || echo python)
+
+# Detect environment and set appropriate IP (cross-platform via Python script)
 detect-env:
-	@cd "$(MAKEFILE_DIR)" && powershell -Command "\
-	Write-Host '=== Detecting Environment ==='; \
-	$$ip = if ($$(try { \
-		Invoke-RestMethod -Uri 'http://169.254.169.254/latest/meta-data/public-ipv4' -TimeoutSec 1 -ErrorAction Stop; \
-		$$true \
-	} catch { $$false })) { \
-		Write-Host 'Detected EC2 environment'; \
-		$$(Invoke-RestMethod -Uri 'http://169.254.169.254/latest/meta-data/public-ipv4') \
-	} else { \
-		Write-Host 'Detected local environment'; \
-		'localhost' \
-	}; \
-	Write-Host ('Using IP: ' + $$ip); \
-	Set-Content -Path './frontend/.env' -Value ('VITE_API_URL=http://' + $$ip + ':5000') -Force; \
-	Write-Host ('Frontend URL: http://' + $$ip + ':5173'); \
-	Write-Host ('Backend URL: http://' + $$ip + ':5000'); \
-	Write-Host '=== Environment Setup Complete ==='"
+	@cd "$(MAKEFILE_DIR)" && $(PYTHON) ./scripts/detect_env.py
 
 # Bring up containers
 up: detect-env
