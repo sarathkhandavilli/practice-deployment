@@ -1,22 +1,24 @@
-.PHONY: up down build logs
+.PHONY: up down build logs detect-env
 
-# Detect which compose command is available: prefer 'docker compose' (v2), fall back to 'docker-compose' (v1)
-COMPOSE_CMD := $(shell (docker compose version >/dev/null 2>&1 && echo "docker compose") || (command -v docker-compose >/dev/null 2>&1 && echo "docker-compose") || echo "")
-ifeq ($(COMPOSE_CMD),)
-$(error Neither 'docker compose' nor 'docker-compose' found. Install Docker Compose.)
-endif
+# Use the Python wrapper to run compose commands cross-platform
+PYTHON := python
 
-# Basic Makefile: bring up/down the full application using Docker Compose
+# Detect environment and write frontend/.env
+detect-env:
+	@echo "Running IP detection script..."
+	@$(PYTHON) ./scripts/detect_env.py
 
-up:
-	@echo "Using: $(COMPOSE_CMD)"
-	@$(COMPOSE_CMD) build && $(COMPOSE_CMD) up -d
+# Bring up the application (build then up)
+up: detect-env
+	@echo "Running docker compose (via scripts/compose.py)"
+	@$(PYTHON) ./scripts/compose.py build || exit 1
+	@$(PYTHON) ./scripts/compose.py up -d || exit 1
 
 down:
-	@$(COMPOSE_CMD) down
+	@$(PYTHON) ./scripts/compose.py down || exit 1
 
 build:
-	@$(COMPOSE_CMD) build
+	@$(PYTHON) ./scripts/compose.py build || exit 1
 
 logs:
-	@$(COMPOSE_CMD) logs -f
+	@$(PYTHON) ./scripts/compose.py logs -f || exit 1
