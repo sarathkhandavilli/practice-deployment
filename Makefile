@@ -3,80 +3,60 @@
 # Set working directory to the Makefile's location
 MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
-# Cross-platform OS detection (no shell needed)
+# Cross-platform OS detection
 ifdef OS
     OSFLAG = Windows
     SHELL_REDIRECT = 2>nul
     CMD_EXISTS = where
     DIR_CHECK = if not exist "$(1)" mkdir "$(1)"
     CD_CMD = cd /d
-    PYTHON_CHECK = $(CMD_EXISTS) $(PYTHON) $(SHELL_REDIRECT) | findstr . >nul && echo ok || echo fail
 else
     OSFLAG = Unix
     SHELL_REDIRECT = 2>/dev/null
     CMD_EXISTS = command -v
     DIR_CHECK = [ ! -d "$(1)" ] && mkdir -p "$(1)"
     CD_CMD = cd
-    PYTHON_CHECK = $(CMD_EXISTS) python3 $(SHELL_REDIRECT) && echo python3 || $(CMD_EXISTS) python $(SHELL_REDIRECT) && echo python || echo fail
 endif
 
-# Discover Python executable (cross-platform)
+# Python detection (simplified)
 ifeq ($(OSFLAG),Windows)
     PYTHON := python
-    ifeq ($(shell $(PYTHON_CHECK)),fail)
-        $(error Python not found. Install Python 3 and ensure it's in PATH.)
-    endif
 else
-    PYTHON := $(shell $(PYTHON_CHECK))
-    ifeq ($(PYTHON),fail)
-        $(error Python not found. Install Python 3.)
-    endif
+    PYTHON := $(shell command -v python3 2>/dev/null || command -v python 2>/dev/null || echo "python-not-found")
+endif
+ifeq ($(PYTHON),python-not-found)
+    $(error Python not found. Install with 'sudo apt install python3'.)
 endif
 
-# Detect Docker Compose command (cross-platform)
+# Docker Compose detection
 ifeq ($(OSFLAG),Windows)
     DOCKER_CMD := docker compose
-    DOCKER_CHECK := $(shell docker --version $(SHELL_REDIRECT) | findstr . >nul && echo ok || echo fail)
-    ifeq ($(DOCKER_CHECK),fail)
-        $(warning Docker not detected on Windows. Install Docker Desktop: https://www.docker.com/products/docker-desktop/)
-    else
-        $(info Docker detected on Windows.)
-    endif
 else
-    DOCKER_CHECK := $(shell docker --version $(SHELL_REDIRECT) && echo ok || echo fail)
-    ifeq ($(DOCKER_CHECK),fail)
-        $(warning Docker not detected. Install Docker first.)
-    endif
-    DOCKER_COMPOSE := $(shell docker compose version $(SHELL_REDIRECT) && echo "docker compose" || $(CMD_EXISTS) docker-compose $(SHELL_REDIRECT) && echo "docker-compose" || echo fail)
-    ifeq ($(DOCKER_COMPOSE),fail)
-        $(warning Docker Compose not found. Install it (v2 plugin or standalone).)
-    endif
-    DOCKER_CMD := $(DOCKER_COMPOSE)
+    DOCKER_CMD := $(shell docker compose version >/dev/null 2>&1 && echo "docker compose" || echo "docker-compose")
+endif
+ifeq ($(DOCKER_CMD),)
+    $(error Docker Compose not found. Install with 'sudo apt install docker-compose'.)
 endif
 
-# Manual Docker check target
+# Docker check target
 docker-check:
-	@echo "Checking Docker setup..."
-	@docker --version
-	@echo "Docker Compose command: $(DOCKER_CMD)"
-	@$(DOCKER_CMD) version
+	@echo "Docker: $$(docker --version)"
+	@echo "Compose: $$($(DOCKER_CMD) version)"
 
-# Detect environment and set appropriate IP (cross-platform via Python script)
+# Detect environment (fixed for Unix/Windows)
 detect-env:
-	@$(call DIR_CHECK,$(MAKEFILE_DIR)scripts)
-	@$(CD_CMD) "$(MAKEFILE_DIR)" && $(PYTHON) ./scripts/detect_env.py
+	$(call DIR_CHECK,$(MAKEFILE_DIR)scripts)
+	$(CD_CMD) "$(MAKEFILE_DIR)" && $(PYTHON) ./scripts/detect_env.py
 
-# Bring up containers (detect env, build, and start)
+# Up target
 up: detect-env
-	@$(CD_CMD) "$(MAKEFILE_DIR)" && $(DOCKER_CMD) build && $(DOCKER_CMD) up -d
-	@echo "Containers started successfully! Access at http://localhost:5173 (frontend) and http://localhost:5000 (backend)."
-	@echo "On EC2, use your public IP instead of localhost. Check logs with 'make logs' if needed."
+	$(CD_CMD) "$(MAKEFILE_DIR)" && $(DOCKER_CMD) build && $(DOCKER_CMD) up -d
+	@echo "Up! Frontend: http://localhost:5173 | Backend: http://localhost:5000"
+	@echo "On EC2: Use public IP. Logs: make logs"
 
-# Bring down containers
+# Down and logs
 down:
-	@$(CD_CMD) "$(MAKEFILE_DIR)" && $(DOCKER_CMD) down
-	@echo "Containers stopped."
+	$(CD_CMD) "$(MAKEFILE_DIR)" && $(DOCKER_CMD) down
 
-# View logs
 logs:
-	@$(CD_CMD) "$(MAKEFILE_DIR)" && $(DOCKER_CMD) logs -f
+	$(CD_CMD) "$(MAKEFILE_DIR)" && $(DOCKER_CMD) logs -f
