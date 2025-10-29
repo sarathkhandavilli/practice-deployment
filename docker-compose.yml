@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.9"
 
 services:
   backend:
@@ -7,20 +7,18 @@ services:
     ports:
       - "5000:5000"
     restart: unless-stopped
-    # No env vars needed here for now
+    command: python app.py --host=0.0.0.0 --port=5000
 
   frontend:
     build:
       context: ./frontend
       args:
-        # Pass the VITE_MODE build argument (dev or prod)
-        VITE_MODE: ${VITE_MODE:-production}
+        VITE_BACKEND_URL: ${VITE_BACKEND_URL}
     container_name: simple_frontend
     ports:
       - "5173:5173"
     environment:
-      # Use Docker host binding for backend URL
-      VITE_BACKEND_URL: "http://0.0.0.0:5000"
+      - VITE_BACKEND_URL=${VITE_BACKEND_URL}
     depends_on:
       - backend
     restart: unless-stopped

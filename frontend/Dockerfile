@@ -1,28 +1,24 @@
-# Use a lightweight Node image
+# Use lightweight Node image
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy dependency files and install
+# Copy dependencies and install
 COPY package*.json ./
 RUN npm install
 
-# Copy all project files
+# Copy all files
 COPY . .
 
-# ARG to set environment mode (default: production)
-ARG VITE_MODE=production
-ENV VITE_MODE=$VITE_MODE
+# Build arguments and environment
+ARG VITE_BACKEND_URL
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
 
-# Copy the correct .env file into place based on VITE_MODE
-# (This is optional; Vite can also pick up .env files automatically)
-RUN if [ -f ".env.$VITE_MODE" ]; then cp .env.$VITE_MODE .env; fi
+# Inject backend URL dynamically
+RUN echo "VITE_BACKEND_URL=${VITE_BACKEND_URL}" > .env && npm run build
 
-# Build the app (VITE_MODE is injected, VITE_BACKEND_URL will be picked from env)
-RUN npm run build
-
-# Expose the port Vite preview will run on
+# Expose port
 EXPOSE 5173
 
-# Start the preview server (production-like)
+# Serve the built app (production-like)
 CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "5173"]
