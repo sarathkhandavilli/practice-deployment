@@ -8,10 +8,14 @@ ifdef OS
     OSFLAG = Windows
     SHELL_REDIRECT = 2>nul
     CMD_EXISTS = where
+    DIR_CHECK = if not exist "$(1)" mkdir "$(1)"
+    CD_CMD = cd /d
 else
     OSFLAG = Unix
     SHELL_REDIRECT = 2>/dev/null
     CMD_EXISTS = command -v
+    DIR_CHECK = [ ! -d "$(1)" ] && mkdir -p "$(1)"
+    CD_CMD = cd
 endif
 
 # Discover Python executable (cross-platform)
@@ -60,20 +64,20 @@ docker-check:
 
 # Detect environment and set appropriate IP (cross-platform via Python script)
 detect-env:
-	@if not exist "$(MAKEFILE_DIR)scripts" mkdir "$(MAKEFILE_DIR)scripts"
-	@cd /d "$(MAKEFILE_DIR)" && $(PYTHON) ./scripts/detect_env.py
+	@$(call DIR_CHECK,$(MAKEFILE_DIR)scripts)
+	@$(CD_CMD) "$(MAKEFILE_DIR)" && $(PYTHON) ./scripts/detect_env.py
 
 # Bring up containers (detect env, build, and start)
 up: detect-env
-	@cd /d "$(MAKEFILE_DIR)" && $(DOCKER_CMD) build && $(DOCKER_CMD) up -d
+	@$(CD_CMD) "$(MAKEFILE_DIR)" && $(DOCKER_CMD) build && $(DOCKER_CMD) up -d
 	@echo "Containers started successfully! Access at http://localhost:5173 (frontend) and http://localhost:5000 (backend)."
 	@echo "Check logs with 'make logs' if needed."
 
 # Bring down containers
 down:
-	@cd /d "$(MAKEFILE_DIR)" && $(DOCKER_CMD) down
+	@$(CD_CMD) "$(MAKEFILE_DIR)" && $(DOCKER_CMD) down
 	@echo "Containers stopped."
 
 # View logs
 logs:
-	@cd /d "$(MAKEFILE_DIR)" && $(DOCKER_CMD) logs -f
+	@$(CD_CMD) "$(MAKEFILE_DIR)" && $(DOCKER_CMD) logs -f
