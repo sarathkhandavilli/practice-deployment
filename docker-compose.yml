@@ -13,12 +13,12 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_BACKEND_URL: ${VITE_BACKEND_URL}
+        VITE_MODE: production
+        VITE_BACKEND_URL: "http://0.0.0.0:5000"
     container_name: simple_frontend
     ports:
       - "5173:5173"
-    environment:
-      - VITE_BACKEND_URL=${VITE_BACKEND_URL}
+    # No runtime env needed; baked into build
     depends_on:
       - backend
     restart: unless-stopped

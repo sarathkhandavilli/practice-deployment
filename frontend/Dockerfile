@@ -10,13 +10,17 @@ RUN npm install
 # Copy all files
 COPY . .
 
-# Build arguments and environment
+# Build-time args for Vite
+ARG VITE_MODE=production
 ARG VITE_BACKEND_URL
+ENV VITE_MODE=$VITE_MODE
 ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
 
-# Inject backend URL dynamically
-RUN echo "VITE_BACKEND_URL=${VITE_BACKEND_URL}" > .env && npm run build
+# Ensure .env contains VITE_BACKEND_URL before building
+RUN sh -lc 'touch .env && grep -q "^VITE_BACKEND_URL=" .env || echo "VITE_BACKEND_URL=${VITE_BACKEND_URL}" >> .env'
 
+# Build
+RUN npm run build
 # Expose port
 EXPOSE 5173
 
