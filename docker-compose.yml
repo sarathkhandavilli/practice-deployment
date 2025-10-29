@@ -7,14 +7,20 @@ services:
     ports:
       - "5000:5000"
     restart: unless-stopped
+    # No env vars needed here for now
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        # Pass the VITE_MODE build argument (dev or prod)
+        VITE_MODE: ${VITE_MODE:-production}
     container_name: simple_frontend
     ports:
       - "5173:5173"
-    env_file:
-      - ./frontend/.env
+    environment:
+      # Use Docker host binding for backend URL
+      VITE_BACKEND_URL: "http://0.0.0.0:5000"
     depends_on:
       - backend
     restart: unless-stopped
