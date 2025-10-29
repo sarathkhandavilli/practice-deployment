@@ -1,7 +1,10 @@
 .PHONY: up down build logs detect-env
 
 # Use the Python wrapper to run compose commands cross-platform
-PYTHON := python
+PYTHON := $(shell command -v python3 2>/dev/null || command -v python 2>/dev/null || echo "")
+ifeq ($(PYTHON),)
+$(error Python not found. Install Python 3 (e.g. on Ubuntu: sudo apt update && sudo apt install -y python3))
+endif
 
 # Detect environment and write frontend/.env
 detect-env:
