@@ -10,22 +10,24 @@ ifdef OS
     CMD_EXISTS = where
     DIR_CHECK = if not exist "$(1)" mkdir "$(1)"
     CD_CMD = cd /d
+    PYTHON_CHECK = $(CMD_EXISTS) $(PYTHON) $(SHELL_REDIRECT) | findstr . >nul && echo ok || echo fail
 else
     OSFLAG = Unix
     SHELL_REDIRECT = 2>/dev/null
     CMD_EXISTS = command -v
     DIR_CHECK = [ ! -d "$(1)" ] && mkdir -p "$(1)"
     CD_CMD = cd
+    PYTHON_CHECK = $(CMD_EXISTS) python3 $(SHELL_REDIRECT) && echo python3 || $(CMD_EXISTS) python $(SHELL_REDIRECT) && echo python || echo fail
 endif
 
 # Discover Python executable (cross-platform)
 ifeq ($(OSFLAG),Windows)
     PYTHON := python
-    ifeq ($(shell $(CMD_EXISTS) $(PYTHON) $(SHELL_REDIRECT) | findstr . >nul && echo ok || echo fail),fail)
+    ifeq ($(shell $(PYTHON_CHECK)),fail)
         $(error Python not found. Install Python 3 and ensure it's in PATH.)
     endif
 else
-    PYTHON := $(shell $(CMD_EXISTS) python3 $(SHELL_REDIRECT) && echo python3 || $(CMD_EXISTS) python $(SHELL_REDIRECT) && echo python || echo fail)
+    PYTHON := $(shell $(PYTHON_CHECK))
     ifeq ($(PYTHON),fail)
         $(error Python not found. Install Python 3.)
     endif
@@ -33,9 +35,7 @@ endif
 
 # Detect Docker Compose command (cross-platform)
 ifeq ($(OSFLAG),Windows)
-    # On Windows (Docker Desktop), use integrated v2
     DOCKER_CMD := docker compose
-    # Check Docker with Windows-compatible syntax
     DOCKER_CHECK := $(shell docker --version $(SHELL_REDIRECT) | findstr . >nul && echo ok || echo fail)
     ifeq ($(DOCKER_CHECK),fail)
         $(warning Docker not detected on Windows. Install Docker Desktop: https://www.docker.com/products/docker-desktop/)
@@ -43,7 +43,6 @@ ifeq ($(OSFLAG),Windows)
         $(info Docker detected on Windows.)
     endif
 else
-    # On Unix, detect v2 vs v1 with proper redirection
     DOCKER_CHECK := $(shell docker --version $(SHELL_REDIRECT) && echo ok || echo fail)
     ifeq ($(DOCKER_CHECK),fail)
         $(warning Docker not detected. Install Docker first.)
@@ -71,7 +70,7 @@ detect-env:
 up: detect-env
 	@$(CD_CMD) "$(MAKEFILE_DIR)" && $(DOCKER_CMD) build && $(DOCKER_CMD) up -d
 	@echo "Containers started successfully! Access at http://localhost:5173 (frontend) and http://localhost:5000 (backend)."
-	@echo "Check logs with 'make logs' if needed."
+	@echo "On EC2, use your public IP instead of localhost. Check logs with 'make logs' if needed."
 
 # Bring down containers
 down:
