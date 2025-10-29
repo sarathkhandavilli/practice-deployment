@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
-# Copy all files
+# Copy all files (including .env for build-time vars)
 COPY . .
 
 # Build the app with environment variables available at build time

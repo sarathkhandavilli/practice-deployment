@@ -1,9 +1,12 @@
+version: '3.8'
+
 services:
   backend:
     build: ./backend
     container_name: simple_backend
     ports:
       - "5000:5000"
+    restart: unless-stopped
 
   frontend:
     build: ./frontend
@@ -14,3 +17,4 @@ services:
       - ./frontend/.env
     depends_on:
       - backend
+    restart: unless-stopped
